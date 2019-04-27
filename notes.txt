@@ -1,0 +1,16 @@
+# Plan
+
+1) Get all movies from BOM from 1980 (to start with) till 2019
+with earnings of > 1mil (we'll make 2019 partial)
+
+2) For each movie, look at cast makeup using IMDb.
+
+3) Look for trends in overall representation,  between crew makeup and 
+dir/prod/writer as a function of male/female.
+
+# Notes
+
+(probably borrowing some code from a previous BOM api that's now depricated)
+
+Ooohk, BOM people index could be useful maybe, has gross per human... tho can
+prolly put this together in a minute... we'll see.
