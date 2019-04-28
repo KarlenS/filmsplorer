@@ -17,6 +17,7 @@ import imdb
 
 __author__ = "Karlen Shahinyan"
 __license__ = "GPL"
+__version__ = "0.0.1"
 __status__ = "Dev"
 
 def get_gender_score(bio,sr):
