@@ -7,15 +7,27 @@ I think eventually will want to get all available film
 data, but for now just a handful relevant fields.
 '''
 
+import pandas as pd
+
 import imdb
 import tmdbsimple as tmdb
+
+from bom import bom
 
 __author__ = "Karlen Shahinyan"
 __license__ = "GPL"
 __version__ = "0.0.1"
 __status__ = "Dev"
 
-class InfoFetcher(object):
+INFLATION_DATA = "bom/bom_tprice_inflation.dat"
+
+def get_inflation():
+    inf_df = pd.read_csv(INFLATION_DATA,delim_whitespace=True,\
+                        names=['year','infl'])
+    inf_df = inf_df.set_index('year')
+
+
+class DBInfoFetcher(object):
 
     def __init__(self,ID):
         self.id = ID
@@ -52,3 +64,48 @@ class InfoFetcher(object):
         res = search.info()
 
         return search.results
+
+class BOMInfoFetcher(object):
+
+    def __init__(self):
+        self.bom_filename = 'bom/bom_all_time_chart.csv'
+        self.bom_infl_filename = 'bom/bom_tprice_inflation.dat'
+
+    def _adj_gross(self,df):
+        '''
+        Adjusting gross earnings to 2019
+        '''
+
+        inf_df = inf_df = pd.read_csv(self.bom_infl_filename,\
+                                      delim_whitespace=True,names=['year','infl'])
+        df = df.merge(inf_df,on='year')
+
+        df['adj_gross'] = df['gross']/df['infl']
+
+        return df
+
+    def _filter_BOM_chart(self,df,grosslower=None,yearlower=None):
+
+        df = self._adj_gross(df)
+
+        return df[(df.year >= yearlower) & (df.adj_gross >= grosslower)]
+
+    def get_BOM_all_time_dom_chart(self,grosslower=None,yearlower=None):
+
+        try:
+            atd_chart_df = pd.read_csv(self.bom_filename)
+
+        except FileNotFoundError:
+            print('{} not found. Rebuilding it - will take some minutes.'.format(filename))
+
+            bomi = bom.BOM()
+            atd_chart_df = bomi.build_alltime_dom_chart()
+            atd_chart_df.to_csv('bom/bom_all_time_chart.csv')
+
+        atd_chart_df = self._filter_BOM_chart(atd_chart_df,\
+                                              grosslower=grosslower,\
+                                              yearlower=yearlower)
+
+        atd_chart_df = atd_chart_df.set_index('rank')
+
+        return atd_chart_df.sort_index()

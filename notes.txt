@@ -1,7 +1,11 @@
 # Plan
 
 1) Get all movies from BOM from 1980 (to start with) till 2019
-with earnings of > 1mil (we'll make 2019 partial)
+with earnings of > 1mil adjusted (we'll make 2019 partial)
+
+This'll be the initial sample selection
+
+-- Done
 
 2) For each movie, look at cast makeup using IMDb.
 
