@@ -28,28 +28,47 @@ def get_inflation():
 
 
 class DBInfoFetcher(object):
+    '''
+    Class to interact with IMDb and TMDB databases.
+
+    (might structure operations in series to delay time
+    between queries and reduce timeout chance.)
+    '''
 
     def __init__(self,ID):
         self.id = ID
         self.ia = imdb.IMDb()
 
-    def getIMDBInfo(self,iid,pom='m'):
+    def _getIMDbMovieInfo(self,imdb_obj):
+
+        try:
+            self.ia.update(imdb_obj, info=['main'])
+        #might want to catch timeouts here
+        except imdb.IMDbError as e:
+            print(e)
+
+    def _getIMDbPersonInfo(self,imdb_obj):
+
+        try:
+            self.ia.update(imdb_obj, info=['biography'])
+        #might want to catch timeouts here
+        except imdb.IMDbError as e:
+            print(e)
+
+
+    def _searchIMDB(self,key,pom='m'):
 
         if pom == 'p':
-            p = self.ia.get_person('%07i' %iid, info=['awards', 'biography','filmography',
-                                               'genres links','keywords links',
-                                               'main','official sites',
-                                               'other works','publicity'])
+            try:
+                search = self.ia.search_person(key)
+            except imdb.IMDbError as e:
+                print(e)
+
         elif pom == 'm':
-
-            m = self.ia.get_movie('%07i' %iid, info=[])
-
-    def searchIMDB(self,key,pom='m'):
-
-        if pom == 'p':
-            search = self.ia.search_person(key)
-        elif pom == 'm':
-            search = self.ia.search_movie(key)
+            try:
+                search = self.ia.search_movie(key)
+            except imdb.IMDbError as e:
+                print(e)
 
         return search[0]
 

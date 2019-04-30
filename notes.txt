@@ -3,11 +3,22 @@
 1) Get all movies from BOM from 1980 (to start with) till 2019
 with earnings of > 1mil adjusted (we'll make 2019 partial)
 
-This'll be the initial sample selection
+    This'll be the initial sample selection
 
 -- Done
 
+Should check for biases in terms of sample selection (gross cutoffs)
+
 2) For each movie, look at cast makeup using IMDb.
+
+    Will use title/year as unique identifier to find the IMDb entry.
+        For some reason BOM doesn't have a direct link to IMDb page... 
+        same company... why not...
+    (Combo of title/year has no duplicates within dataset)
+
+
+    IMDb has a lot of info fields, but for now just getting immediately
+    relevant ones- 'main' for movie and 'biography' for person
 
 3) Look for trends in overall representation,  between crew makeup and 
 dir/prod/writer as a function of male/female.
