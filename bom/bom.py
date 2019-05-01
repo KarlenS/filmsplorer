@@ -36,7 +36,7 @@ class BOM(object):
     '''
     BOM_MAIN_URL = "https://www.boxofficemojo.com"
     ALLTIME_DOM_EXT = "/alltime/domestic.htm"
-    ALLTIME_DOM_PAGES = 3
+    ALLTIME_DOM_PAGES = 170
 
     def __init__(self,ext=ALLTIME_DOM_EXT):
         self.url = BOM.BOM_MAIN_URL + ext
@@ -94,12 +94,5 @@ class BOM(object):
             chart_page_url = '{main}?page={num}&p=.htm'.format(main=self.url,num = pnum)
 
             chart_df = self._get_alltime_chart_movies(chart_page_url,chart_df)
-
-            #NOTE: move this - don't wanna make any cuts here
-
-            #adjusting gross to 2019 dollars
-            #gross = gross/inf_df[year].infl
-
-            #if gross > grosslower and year > yearlower:
 
         return chart_df

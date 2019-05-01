@@ -35,11 +35,10 @@ class DBInfoFetcher(object):
     between queries and reduce timeout chance.)
     '''
 
-    def __init__(self,ID):
-        self.id = ID
+    def __init__(self):
         self.ia = imdb.IMDb()
 
-    def _getIMDbMovieInfo(self,imdb_obj):
+    def _get_IMDb_Movie_Info(self,imdb_obj):
 
         try:
             self.ia.update(imdb_obj, info=['main'])
@@ -47,7 +46,7 @@ class DBInfoFetcher(object):
         except imdb.IMDbError as e:
             print(e)
 
-    def _getIMDbPersonInfo(self,imdb_obj):
+    def get_IMDb_Person_Info(self,imdb_obj):
 
         try:
             self.ia.update(imdb_obj, info=['biography'])
@@ -56,29 +55,46 @@ class DBInfoFetcher(object):
             print(e)
 
 
-    def _searchIMDB(self,key,pom='m'):
+    def get_IMDb_info(self,key,pom='m'):
 
         if pom == 'p':
             try:
                 search = self.ia.search_person(key)
+                self.get_IMDb_Person_Info(search[0])
             except imdb.IMDbError as e:
                 print(e)
 
         elif pom == 'm':
+            title,year = key
             try:
-                search = self.ia.search_movie(key)
+                search = self.ia.search_movie(title)
             except imdb.IMDbError as e:
                 print(e)
 
-        return search[0]
+            if search[0]['year'] == year:
+                iobj = search[0]
+                self._get_IMDb_Movie_Info(iobj)
+            else:
+                for i in range(1,len(search),1):
+                    if search[i]['year'] == year:
+                        iobj = search[i]
+                    else:
+                        continue
+                try:
+                    self._get_IMDb_Movie_Info(iobj)
+                except:
+                    print('No match for: {}'.format(title))
+                    return None
+
+        return iobj
 
 
-    def getTMDBInfo(self,tid):
+    def get_TMDB_Info(self,tid):
 
         movie = tmdb.Movies(tid)
         res = movie.info()
 
-    def searchTMDB(self, key):
+    def search_TMDB(self, key):
         search = tmdb.Search(query=key)
         res = search.info()
 
@@ -103,13 +119,13 @@ class BOMInfoFetcher(object):
 
         return df
 
-    def _filter_BOM_chart(self,df,grosslower=None,yearlower=None):
+    def _filter_BOM_chart(self,df,grosslower=0,yearlower=0):
 
         df = self._adj_gross(df)
 
         return df[(df.year >= yearlower) & (df.adj_gross >= grosslower)]
 
-    def get_BOM_all_time_dom_chart(self,grosslower=None,yearlower=None):
+    def get_BOM_all_time_dom_chart(self,grosslower=0,yearlower=0):
 
         try:
             atd_chart_df = pd.read_csv(self.bom_filename)
