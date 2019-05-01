@@ -23,6 +23,8 @@ Should check for biases in terms of sample selection (gross cutoffs)
 3) Look for trends in overall representation,  between crew makeup and 
 dir/prod/writer as a function of male/female.
 
+4) can look into budget things too - total/evolution, predict it somehow?
+
 # Notes
 
 (probably borrowing some code from a previous BOM api that's now depricated)

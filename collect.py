@@ -4,8 +4,10 @@ will be coordinated.
 '''
 import numpy as np
 import pandas as pd
+import json
 import argparse
 
+import pymysql
 from tqdm import tqdm
 
 import InfoFetcher
@@ -16,6 +18,7 @@ __license__ = "GPL"
 __version__ = "0.0.1"
 __status__ = "Dev"
 
+FAIL = open('faillist.txt','a+')
 
 def get_BOM_data(glow,ylow):
 
@@ -59,35 +62,77 @@ def get_gender(name,bio):
     #else:
     #    return 'U{}'.format(gender_score)
 
-def get_IMDb_data(title,year,dbif):
+def prep_ids(peeps):
+    ids = pd.unique([p.getID() for p in peeps if p.getID() != None])
+    return {"ids" : ids.tolist()}
+
+def get_IMDb_data(rank,title,year,dbif,client):
 
     movie = dbif.get_IMDb_info([title,year],pom='m')
+    if movie == None:
+        FAIL.write('{r} | {t} | {y}'.format(r=rank,t=title,y=year))
+        print('skipping {}'.format(title))
+        return []
+
+    print(rank, movie)
     mid = movie.getID()
     genres = movie['genres']
 
     cast = movie['cast']
     directors = movie['directors']
     writers = movie['writers']
-    producers = movie['producers']
+    cids = prep_ids(cast)
+    dids = prep_ids(directors)
+    wids = prep_ids(writers)
+
+    try:
+        producers = movie['producers']
+        prids = prep_ids(producers)
+    except KeyError:
+        producers = []
+        pids = {"ids:": []}
+
     try:
         cgs = movie['cinematographers']
+        cgids = prep_ids(cgs)
     except KeyError:
         cgs = []
+        cgids = {"ids:": []}
 
+    try:
+        composers = movie['composers']
+        coids = prep_ids(composers)
+    except KeyError:
+        composers = []
+        coids = {"ids:": []}
+
+
+    sql = "update `movies` set `id`='{mid}',genres='{gens}',`cast`='{cids}',"\
+            "`directors`='{dids}',`producers`='{prids}',"\
+            "`writers`='{wids}',`cgs`='{cgids}',`composers`='{coids}'"\
+            "where `mrank`='{mrank}'".format(dids=json.dumps(dids),
+                                             cids=json.dumps(cids),
+                                             wids=json.dumps(wids),
+                                             prids=json.dumps(prids),
+                                             coids=json.dumps(coids),
+                                             cgids=json.dumps(cgids),
+                                             gens=json.dumps(genres),
+                                             mid=mid,
+                                             mrank=rank)
+
+    with client.cursor() as cursor:
+        cursor.execute(sql)
+    client.commit()
 
     #something like this for getting uniques
     #peeps = [p for p in x if p.getID() != None]
     #pd.unique(peeps)
 
-    try:
-        composers = movie['composers']
-    except KeyError:
-        composers = []
 
     people = np.concatenate([cast,directors,producers,writers,cgs,composers])
     return pd.unique([p for p in people if p.getID() != None])
 
-def get_people_data(df):
+def get_people_data(df,client):
     '''
     Make a pass and collect gender info for everyone involved
     in each movie... either keep a separate DF/DB or add people info
@@ -104,14 +149,14 @@ def get_people_data(df):
     dbif = InfoFetcher.DBInfoFetcher()
 
     peeps = []
-    for rank,m in tqdm(df.iterrows()):
+    for rank,m in df.iterrows():
         title = '{title}'.format(title=m['title'])
         peeps = pd.unique(
-            np.concatenate([peeps,get_IMDb_data(title,m['year'],dbif)]))
+            np.concatenate([peeps,get_IMDb_data(rank,title,m['year'],dbif,client)]))
 
     return peeps
 
-def add_to_people_df(people):
+def add_to_people_db(people,client):
 
     dbif = InfoFetcher.DBInfoFetcher()
 
@@ -121,11 +166,19 @@ def add_to_people_df(people):
         name = person['name']
         firstname = name.split(' ')[0]
         pid = person.getID()
-        gender = get_gender(firstname,person['biography'])
-        print('{name} | {pid} | {gender}'.format(name=name,
-                                                 pid=pid,
-                                                 gender=gender))
 
+        try:
+            gender = get_gender(firstname,person['biography'])
+        except:
+            gender = 'X'
+
+        sql = 'INSERT INTO `people` (id,name,gender)'\
+                ' VALUES ("{pid}","{name}","{gender}")'.format(pid=pid,
+                                                        name=name,gender=gender)
+
+        with client.cursor() as cursor:
+            cursor.execute(sql)
+        client.commit()
 
 def main():
 
@@ -136,28 +189,23 @@ def main():
     args = parser.parse_args()
 
     bom_df = get_BOM_data(args.glow,args.ylow)
-    people = get_people_data(bom_df[0:2])
 
-    #client = pymysql.connect(host='localhost',
-    #                         user='root',
-    #                         password='temppass',
-    #                         db='imdb_add',
-    #                         charset='utf8mb4',
-    #                         cursorclass=pymysql.cursors.DictCursor)
+    client = pymysql.connect(host='localhost',
+                             user='root',
+                             password='temppass',
+                             db='imdb_add',
+                             charset='utf8mb4',
+                             cursorclass=pymysql.cursors.DictCursor)
 
 
-    #get_data(ia,client)
-    #client.close()
+    people = get_people_data(bom_df[680:],client)
 
-    #sql = 'INSERT INTO gender (id,primaryName,gender_score) VALUES (%07i,"%s",%i)' %(c,name,gs)
     ##might wanna update for checking for fails (defined as couldn't connect)
 
-    #with client.cursor() as cursor:
-    #    cursor.execute(sql)
 
-    #client.commit()
 
-    make_people_df(people)
+    add_to_people_db(people,client)
+    client.close()
 
 
 if __name__ == '__main__':

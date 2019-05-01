@@ -13,7 +13,7 @@ rank,title,studio,gross,year
 12,Beauty and the Beast (2017),BV,504014165.0,2017
 13,Finding Dory,BV,486295561.0,2016
 14,Star Wars: Episode I - The Phantom Menace,Fox,474544677.0,1999
-15,Star Wars,Fox,460998007.0,1977
+15,Star Wars: Episode IV - A New Hope,Fox,460998007.0,1977
 16,Avengers: Age of Ultron,BV,459005868.0,2015
 17,The Dark Knight Rises,WB,448139099.0,2012
 18,Shrek 2,DW,441226247.0,2004
@@ -253,7 +253,7 @@ rank,title,studio,gross,year
 252,Indiana Jones and the Temple of Doom,Par.,179870271.0,1984
 253,Top Gun,Par.,179800601.0,1986
 254,Hitch,Sony,179495555.0,2005
-255,MIB 3,Sony,179020854.0,2012
+255,Men In Black 3,Sony,179020854.0,2012
 256,Pretty Woman,BV,178406268.0,1990
 257,Home (2015),Fox,177397510.0,2015
 258,Night at the Museum: Battle of the Smithsonian,Fox,177243721.0,2009
@@ -713,7 +713,7 @@ rank,title,studio,gross,year
 712,Sleepy Hollow,Par.,101071502.0,1999
 713,Rampage (2018),WB (NL),101028233.0,2018
 714,Collateral,DW,101005703.0,2004
-715,Contact,WB,100920329.0,1997
+715,Contact (1997),WB,100920329.0,1997
 716,Charlie's Angels: Full Throttle,Sony,100830111.0,2003
 717,The Pelican Brief,WB,100768056.0,1993
 718,Vanilla Sky,Par.,100618344.0,2001
@@ -723,7 +723,7 @@ rank,title,studio,gross,year
 722,Million Dollar Baby,WB,100492203.0,2004
 723,Airport,Uni.,100489151.0,1970
 724,A Wrinkle in Time,BV,100478608.0,2018
-725,Jumanji,Sony,100475249.0,1995
+725,Jumanji (1995),Sony,100475249.0,1995
 726,Step Brothers,Sony,100468793.0,2008
 727,Evan Almighty,Uni.,100462298.0,2007
 728,Fifty Shades Freed,Uni.,100407760.0,2018

@@ -71,12 +71,18 @@ class DBInfoFetcher(object):
             except imdb.IMDbError as e:
                 print(e)
 
-            if search[0]['year'] == year:
+            if search[0]['year'] == year and search[0]['kind'] == 'movie':
                 iobj = search[0]
                 self._get_IMDb_Movie_Info(iobj)
             else:
                 for i in range(1,len(search),1):
-                    if search[i]['year'] == year:
+                    try:
+                        yr = search[i]['year']
+                        kind = search[i]['kind']
+                    except:
+                        continue
+
+                    if yr == year and kind == 'movie':
                         iobj = search[i]
                     else:
                         continue
