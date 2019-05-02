@@ -213,6 +213,7 @@ def add_to_people_db(people,client):
             cursor.execute(sql)
         client.commit()
 
+
 def main():
 
     parser = argparse.ArgumentParser('This is a tool for gathering \
