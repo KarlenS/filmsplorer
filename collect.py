@@ -7,6 +7,8 @@ import pandas as pd
 import json
 import argparse
 
+from time import sleep
+
 import pymysql
 from tqdm import tqdm
 
@@ -18,7 +20,6 @@ __license__ = "GPL"
 __version__ = "0.0.1"
 __status__ = "Dev"
 
-FAIL = open('faillist.txt','a+')
 
 def get_BOM_data(glow,ylow):
 
@@ -27,13 +28,13 @@ def get_BOM_data(glow,ylow):
     return bom.get_BOM_all_time_dom_chart(grosslower=glow,\
                                           yearlower=ylow)
 
-def get_gender(name,bio):
+def get_gender(name,bio,filmog):
     '''
     Logic is a little complicated here, but to summarize,
     using 2 methods to figure out gender:
 
     - if bio info is good use it
-    - otherwise, try looking it up 
+    - otherwise, try looking it up
     - One of the methods is uninformative while the
     other gives an answer:
         M or F
@@ -42,7 +43,6 @@ def get_gender(name,bio):
     - Both are uninformative:
         X
     '''
-
 
     gender_score = genderify.get_gender_score(bio)
 
@@ -58,7 +58,13 @@ def get_gender(name,bio):
         elif gender_lookup == 1:
             return 'F'
         else:
-            return 'X'
+            #can try checking actor/actress
+            a = genderify.check_filmography(filmog)
+            if a == 'M' or a == 'F':
+                return a
+            else:
+                print('failed filmography check')
+                return 'X'
     #else:
     #    return 'U{}'.format(gender_score)
 
@@ -70,17 +76,26 @@ def get_IMDb_data(rank,title,year,dbif,client):
 
     movie = dbif.get_IMDb_info([title,year],pom='m')
     if movie == None:
-        FAIL.write('{r} | {t} | {y}'.format(r=rank,t=title,y=year))
+        failf = open('faillist.txt','a+')
+        failf.write('{r} | {t} | {y}'.format(r=rank,t=title,y=year))
+        failf.close()
         print('skipping {}'.format(title))
         return []
 
     print(rank, movie)
     mid = movie.getID()
-    genres = movie['genres']
 
-    cast = movie['cast']
-    directors = movie['directors']
-    writers = movie['writers']
+    try:
+        genres = movie['genres']
+        cast = movie['cast']
+        directors = movie['directors']
+        writers = movie['writers']
+    except KeyError:
+        failf = open('faillist.txt','a+')
+        failf.write('{r} | {t} | {y}'.format(r=rank,t=title,y=year))
+        failf.close()
+        return []
+
     cids = prep_ids(cast)
     dids = prep_ids(directors)
     wids = prep_ids(writers)
@@ -160,17 +175,35 @@ def add_to_people_db(people,client):
 
     dbif = InfoFetcher.DBInfoFetcher()
 
-    for person in people:
+    print('Number of peeps: {}'.format(np.size(people)))
+    for person in tqdm(people):
 
         dbif.get_IMDb_Person_Info(person)
         name = person['name']
+
+
         firstname = name.split(' ')[0]
         pid = person.getID()
 
         try:
-            gender = get_gender(firstname,person['biography'])
+            bio = person['biography']
         except:
-            gender = 'X'
+            print('likely connection issue, sleeping a sec')
+            sleep(1)
+            dbif.get_IMDb_Person_Info(person)
+            try:
+                bio = person['biography']
+            except:
+                print('waiting didnt help.')
+                bio = ['']
+
+        try:
+            filmog = person['filmography']
+        except KeyError:
+            print('setting filmog to None for {}'.format(name))
+            filmog = None
+
+        gender = get_gender(firstname,bio,filmog)
 
         sql = 'INSERT INTO `people` (id,name,gender)'\
                 ' VALUES ("{pid}","{name}","{gender}")'.format(pid=pid,
@@ -198,7 +231,7 @@ def main():
                              cursorclass=pymysql.cursors.DictCursor)
 
 
-    people = get_people_data(bom_df[680:],client)
+    people = get_people_data(bom_df[200:1000],client)
 
     ##might wanna update for checking for fails (defined as couldn't connect)
 

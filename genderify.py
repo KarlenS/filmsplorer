@@ -23,6 +23,19 @@ __status__ = "Dev"
 FNAMES = np.array(pd.read_csv(FURL,comment='#',names=['name'],squeeze=True))
 MNAMES = np.array(pd.read_csv(MURL,comment='#',names=['name'],squeeze=True))
 
+def check_filmography(fg):
+
+    if fg:
+        for f in fg:
+            if 'actor' in f.keys():
+                return 'M'
+            elif 'actress' in f.keys():
+                return 'F'
+            else:
+                continue
+        return 'X'
+    else:
+        return 'X'
 
 def get_gender_score(bio):
 

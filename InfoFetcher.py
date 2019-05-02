@@ -49,7 +49,7 @@ class DBInfoFetcher(object):
     def get_IMDb_Person_Info(self,imdb_obj):
 
         try:
-            self.ia.update(imdb_obj, info=['biography'])
+            self.ia.update(imdb_obj, info=['biography','filmography'])
         #might want to catch timeouts here
         except imdb.IMDbError as e:
             print(e)
