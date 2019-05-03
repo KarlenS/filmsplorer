@@ -22,7 +22,7 @@ __status__ = "Dev"
 
 CLIENT = pymysql.connect(host='localhost',
                          user='root',
-                         password='leanna88',
+                         password='temppass',
                          db='imdb_add',
                          charset='utf8mb4',
                          cursorclass=pymysql.cursors.DictCursor)
@@ -41,7 +41,10 @@ def corner_plot(ystart=1980,yend=2019):
 
         temp = []
         for field in relfields:
-            M,F,X = cdict[field]
+            try:
+                M,F,X = cdict[field]
+            except KeyError:
+                M,F,X = [0,0,1] #bad, need better handling
             temp.append(F/float(M+F+X))
 
         cdata.append(temp)
@@ -58,8 +61,11 @@ def corr_plot(f1,f2):
     for rank,m in df.iterrows():
         cdict = json.loads(m['counts'])
 
-        M1,F1,X1 = cdict[f1]
-        M2,F2,X2 = cdict[f2]
+        try:
+            M1,F1,X1 = cdict[f1]
+            M2,F2,X2 = cdict[f2]
+        except KeyError:
+            continue
 
         field1.append(F1/float(M1+F1+X1))
         field2.append(F2/float(M2+F2+X2))
@@ -67,10 +73,13 @@ def corr_plot(f1,f2):
 
     fig,ax = plt.subplots(1)
 
-    ax.scatter(field1,field2,marker='o',alpha=0.7,label='% female')
+    ax.scatter(field1,field2,marker='o',alpha=0.7,label='fraction female')
 
-    ax.set_xlabel(f1)
-    ax.set_ylabel(f2)
+    pr = np.corrcoef(field1,field2)
+    print('Pearson r: {}'.format(pr[0][1]))
+
+    ax.set_xlabel(f1,fontsize=16)
+    ax.set_ylabel(f2,fontsize=16)
     ax.legend()
 
 
@@ -87,8 +96,6 @@ def plot_yearly_data(ystart,yend,field='total'):
     axr.grid()
 
     years = np.arange(ystart,yend+1,1)
-    m_counts = np.zeros_like(years)
-    f_counts = np.zeros_like(years)
 
     width = 0.35
     for year in years:
@@ -106,8 +113,8 @@ def plot_yearly_data(ystart,yend,field='total'):
           Line2D([0], [0], color='C0', lw=4)]
 
     ax.legend(cl,['Female','Male'])
-    ax.set_ylabel('Number of people',fontsize=16)
-    axr.set_ylabel('% Female',fontsize=16)
+    ax.set_ylabel('Number of People',fontsize=16)
+    axr.set_ylabel('Fraction Female',fontsize=16)
     axr.set_xlabel('Year',fontsize=16)
 
 
@@ -130,7 +137,7 @@ def get_count_totals(df):
 
     return count_totals
 
-def get_gender_data_from_db(rlim=[0,200],ylim=[1980,2019]):
+def get_gender_data_from_db(rlim=[0,500],ylim=[1980,2019]):
 
     sql ="SELECT `mrank`,`id`,`title`,`year`,`studio`,`gross`,`counts` "\
             "FROM `movies` WHERE (`mrank` BETWEEN '{r1}' AND '{r2}') AND "\

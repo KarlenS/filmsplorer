@@ -34,13 +34,12 @@ def get_gender(name,bio,filmog):
     using 2 methods to figure out gender:
 
     - if bio info is good use it
-    - otherwise, try looking it up
-    - One of the methods is uninformative while the
+    - then, try looking it up by first name
+    - if that doesn't work either, use filmography actor/actress key
+    - Then... if one of the methods is uninformative while the
     other gives an answer:
         M or F
-    - Methods conflict:
-        U#, where # is gender_score
-    - Both are uninformative:
+    - No method succeeds:
         X
     '''
 
@@ -65,23 +64,21 @@ def get_gender(name,bio,filmog):
             else:
                 print('failed filmography check')
                 return 'X'
-    #else:
-    #    return 'U{}'.format(gender_score)
 
 def prep_ids(peeps):
     ids = pd.unique([p.getID() for p in peeps if p.getID() != None])
     return {"ids" : ids.tolist()}
 
 def count_genders(ids,client,dbif):
-
+    '''
+    For a given movie, use the gender flags to total the
+    number of people
+    '''
 
     M = 0
     F = 0
     X = 0
     for pid in ids:
-
-    #sqlF ='SELECT COUNT(`gender`) FROM `people` WHERE `id` in {ids} and`gender`="F"'.format(ids=ids)
-    #sqlX ='SELECT COUNT(`gender`) FROM `people` WHERE `id` in {ids} and`gender`="X"'.format(ids=ids)
 
         sql ='SELECT `gender` FROM `people` WHERE `id`={pid}'.format(pid=pid)
 
@@ -111,7 +108,8 @@ def count_genders(ids,client,dbif):
 def get_movie_gender_counts(rank,client):
 
     '''
-    BUGGGGG: lots of missing people...
+    Given the movie rank in bom chart, returns number of people
+    for each category (cast,writers,etc) broken down by gender.
     '''
 
     dbif = InfoFetcher.DBInfoFetcher()
@@ -135,7 +133,7 @@ def get_movie_gender_counts(rank,client):
             ids = json.loads(qres[0][field])['ids']
         except:
             try:
-                ids = json.loads(qres[0][field])['ids:']
+                ids = json.loads(qres[0][field])['ids']
             except:
                 return counts
 
@@ -156,6 +154,11 @@ def get_movie_gender_counts(rank,client):
         #count_genders()
 
 def get_IMDb_data(rank,title,year,dbif,client):
+
+    '''
+    Uses the IMDb API to fetch desired data fields
+    for a given movie.
+    '''
 
     movie = dbif.get_IMDb_info([title,year],pom='m')
     if movie == None:
@@ -238,13 +241,6 @@ def get_people_data(df,client):
     Make a pass and collect gender info for everyone involved
     in each movie... either keep a separate DF/DB or add people info
     to movie DF.
-
-    Eventually want male/female counts per movie for each category
-    (director,producer,writer,cast members) which will then get binned
-    by year. Can also explore by gross cutoff...
-
-        -ooo can setup an interactive slider situation to see what happens
-        as you shift the gross cutoff
     '''
 
     dbif = InfoFetcher.DBInfoFetcher()
@@ -259,6 +255,9 @@ def get_people_data(df,client):
 
 
 def get_single_gender(pid,dbif):
+    '''
+    Given a person's imdb ID, try to determine and return gender
+    '''
 
     person = dbif.ia.get_person(pid,info=['main','biography','filmography'])
 
@@ -297,6 +296,10 @@ def get_single_gender(pid,dbif):
 
 
 def add_to_people_db(people,client):
+    '''
+    Given a list of IMDb people object, populate DB with
+    desired information (for now: ID, Name, Gender)
+    '''
 
     dbif = InfoFetcher.DBInfoFetcher()
 
@@ -354,7 +357,7 @@ def main():
 
     client = pymysql.connect(host='localhost',
                              user='root',
-                             password='leanna88',
+                             password='temppass',
                              db='imdb_add',
                              charset='utf8mb4',
                              cursorclass=pymysql.cursors.DictCursor)
@@ -364,7 +367,9 @@ def main():
         people = get_people_data(bom_df[:1000],client)
         add_to_people_db(people,client)
 
-    for rank,m in tqdm(bom_df[178:500].iterrows()):
+
+    #patching the gender data...
+    for rank,m in tqdm(bom_df[259:1000].iterrows()):
         print('---- working on movie: {}'.format(m['title']))
         count = get_movie_gender_counts(rank,client)
         sql = "update `movies` set `counts`='{c}' where"\
