@@ -72,6 +72,89 @@ def prep_ids(peeps):
     ids = pd.unique([p.getID() for p in peeps if p.getID() != None])
     return {"ids" : ids.tolist()}
 
+def count_genders(ids,client,dbif):
+
+
+    M = 0
+    F = 0
+    X = 0
+    for pid in ids:
+
+    #sqlF ='SELECT COUNT(`gender`) FROM `people` WHERE `id` in {ids} and`gender`="F"'.format(ids=ids)
+    #sqlX ='SELECT COUNT(`gender`) FROM `people` WHERE `id` in {ids} and`gender`="X"'.format(ids=ids)
+
+        sql ='SELECT `gender` FROM `people` WHERE `id`={pid}'.format(pid=pid)
+
+        with client.cursor() as cursor:
+            cursor.execute(sql)
+        client.commit()
+
+        qres = cursor.fetchall()
+
+        if len(qres) == 0:
+            gender = get_single_gender(pid,dbif)
+        else:
+            gender = qres[0]['gender']
+
+
+        if gender == 'M':
+            M += 1
+        elif gender == 'F':
+            F+=1
+        elif gender == 'X':
+            X+=1
+        else:
+            print('what is gender even...')
+
+    return M,F,X
+
+def get_movie_gender_counts(rank,client):
+
+    '''
+    BUGGGGG: lots of missing people...
+    '''
+
+    dbif = InfoFetcher.DBInfoFetcher()
+
+    fields = ['cast','directors','producers',\
+             'writers','composers','cgs']
+
+
+    counts = {}
+    sql ='SELECT * FROM `movies` WHERE `mrank`={rank}'.format(rank=rank)
+
+    with client.cursor() as cursor:
+        cursor.execute(sql)
+    client.commit()
+
+    qres = cursor.fetchall()
+
+    for field in fields:
+
+        try:
+            ids = json.loads(qres[0][field])['ids']
+        except:
+            try:
+                ids = json.loads(qres[0][field])['ids:']
+            except:
+                return counts
+
+
+        if len(ids)>0:
+            ids = [int(i) for i in ids]
+            M,F,X = count_genders(ids,client,dbif)
+        else:
+            M = 0
+            F = 0
+
+        #print(ids)
+
+        #print(len(ids),M+F)
+        counts[field] = [M,F,X]
+
+    return counts
+        #count_genders()
+
 def get_IMDb_data(rank,title,year,dbif,client):
 
     movie = dbif.get_IMDb_info([title,year],pom='m')
@@ -105,21 +188,21 @@ def get_IMDb_data(rank,title,year,dbif,client):
         prids = prep_ids(producers)
     except KeyError:
         producers = []
-        pids = {"ids:": []}
+        pids = {"ids": []}
 
     try:
         cgs = movie['cinematographers']
         cgids = prep_ids(cgs)
     except KeyError:
         cgs = []
-        cgids = {"ids:": []}
+        cgids = {"ids": []}
 
     try:
         composers = movie['composers']
         coids = prep_ids(composers)
     except KeyError:
         composers = []
-        coids = {"ids:": []}
+        coids = {"ids": []}
 
 
     sql = "update `movies` set `id`='{mid}',genres='{gens}',`cast`='{cids}',"\
@@ -147,6 +230,9 @@ def get_IMDb_data(rank,title,year,dbif,client):
     people = np.concatenate([cast,directors,producers,writers,cgs,composers])
     return pd.unique([p for p in people if p.getID() != None])
 
+
+
+
 def get_people_data(df,client):
     '''
     Make a pass and collect gender info for everyone involved
@@ -170,6 +256,45 @@ def get_people_data(df,client):
             np.concatenate([peeps,get_IMDb_data(rank,title,m['year'],dbif,client)]))
 
     return peeps
+
+
+def get_single_gender(pid,dbif):
+
+    person = dbif.ia.get_person(pid,info=['main','biography','filmography'])
+
+
+    try:
+        name = person['name']
+    except:
+        print('timing out, waiting couple secs')
+        sleep(2)
+        person = dbif.ia.get_person(pid,info=['main','biography','filmography'])
+        try:
+            name = person['name']
+        except:
+            return 'X'
+
+    #print('looking up gender for {}.'.format(name))
+
+    firstname = name.split(' ')[0]
+
+    try:
+        bio = person['biography']
+    except:
+        try:
+            bio = person['biography']
+        except:
+            print('bio empty or something went wrong')
+            bio = ['']
+
+    try:
+        filmog = person['filmography']
+    except KeyError:
+        print('setting filmog to None for {}'.format(name))
+        filmog = None
+
+    return get_gender(firstname,bio,filmog)
+
 
 def add_to_people_db(people,client):
 
@@ -220,25 +345,36 @@ def main():
                                      BOM and IMDb data.')
     parser.add_argument('-ylow',default=1980,help='Earliest year.')
     parser.add_argument('-glow',default=1000000,help='Lowest gross earning.')
+    parser.add_argument('--get_people_info',\
+                        default=False,help='When true will populate \
+                        database tables with people info.')
     args = parser.parse_args()
 
     bom_df = get_BOM_data(args.glow,args.ylow)
 
     client = pymysql.connect(host='localhost',
                              user='root',
-                             password='temppass',
+                             password='leanna88',
                              db='imdb_add',
                              charset='utf8mb4',
                              cursorclass=pymysql.cursors.DictCursor)
 
 
-    people = get_people_data(bom_df[200:1000],client)
+    if args.get_people_info:
+        people = get_people_data(bom_df[:1000],client)
+        add_to_people_db(people,client)
 
-    ##might wanna update for checking for fails (defined as couldn't connect)
+    for rank,m in tqdm(bom_df[178:500].iterrows()):
+        print('---- working on movie: {}'.format(m['title']))
+        count = get_movie_gender_counts(rank,client)
+        sql = "update `movies` set `counts`='{c}' where"\
+            "`mrank`={r}".format(c=json.dumps(count),r=rank)
+
+        with client.cursor() as cursor:
+            cursor.execute(sql)
+        client.commit()
 
 
-
-    add_to_people_db(people,client)
     client.close()
 
 

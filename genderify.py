@@ -101,25 +101,3 @@ def get_sw():
     return sw
 
 SW = get_sw()
-
-'''
-
-    client = pymysql.connect(host='localhost',
-                             user='root',
-                             password='temppass',
-                             db='imdb_add',
-                             charset='utf8mb4',
-                             cursorclass=pymysql.cursors.DictCursor)
-
-    get_data(ia,client)
-    client.close()
-
-    sql = 'INSERT INTO gender (id,primaryName,gender_score) VALUES (%07i,"%s",%i)' %(c,name,gs)
-    #might wanna update for checking for fails (defined as couldn't connect)
-
-    with client.cursor() as cursor:
-        cursor.execute(sql)
-
-    client.commit()
-
-'''
