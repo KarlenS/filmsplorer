@@ -160,7 +160,12 @@ def get_IMDb_data(rank,title,year,dbif,client):
     for a given movie.
     '''
 
-    movie = dbif.get_IMDb_info([title,year],pom='m')
+    ##this is patchwork - should really handle this in InfoFetcher
+    try:
+        movie = dbif.get_IMDb_info([title,year],pom='m')
+    except:
+        movie = None
+
     if movie == None:
         failf = open('faillist.txt','a+')
         failf.write('{r} | {t} | {y}'.format(r=rank,t=title,y=year))
@@ -191,7 +196,7 @@ def get_IMDb_data(rank,title,year,dbif,client):
         prids = prep_ids(producers)
     except KeyError:
         producers = []
-        pids = {"ids": []}
+        prids = {"ids": []}
 
     try:
         cgs = movie['cinematographers']
@@ -348,9 +353,9 @@ def main():
                                      BOM and IMDb data.')
     parser.add_argument('-ylow',default=1980,help='Earliest year.')
     parser.add_argument('-glow',default=1000000,help='Lowest gross earning.')
-    parser.add_argument('--get_people_info',\
-                        default=False,help='When true will populate \
-                        database tables with people info.')
+    parser.add_argument('--get_people_info',action='store_true',\
+                        help='When true will populate'\
+                        'database tables with people info.')
     args = parser.parse_args()
 
     bom_df = get_BOM_data(args.glow,args.ylow)
@@ -364,12 +369,12 @@ def main():
 
 
     if args.get_people_info:
-        people = get_people_data(bom_df[:1000],client)
+        people = get_people_data(bom_df[1000:2000],client)
         add_to_people_db(people,client)
 
 
     #patching the gender data...
-    for rank,m in tqdm(bom_df[259:1000].iterrows()):
+    for rank,m in tqdm(bom_df[1000:2000].iterrows()):
         print('---- working on movie: {}'.format(m['title']))
         count = get_movie_gender_counts(rank,client)
         sql = "update `movies` set `counts`='{c}' where"\
