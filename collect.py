@@ -14,6 +14,7 @@ from tqdm import tqdm
 
 import InfoFetcher
 import genderify
+from _dbclient import CLIENT
 
 __author__ = "Karlen Shahinyan"
 __license__ = "GPL"
@@ -349,8 +350,8 @@ def add_to_people_db(people,client):
 
 def main():
 
-    parser = argparse.ArgumentParser('This is a tool for gathering \
-                                     BOM and IMDb data.')
+    parser = argparse.ArgumentParser('This is a tool for gathering' \
+                                     'BOM and IMDb data.')
     parser.add_argument('-ylow',default=1980,help='Earliest year.')
     parser.add_argument('-glow',default=1000000,help='Lowest gross earning.')
     parser.add_argument('--get_people_info',action='store_true',\
@@ -360,32 +361,25 @@ def main():
 
     bom_df = get_BOM_data(args.glow,args.ylow)
 
-    client = pymysql.connect(host='localhost',
-                             user='root',
-                             password='temppass',
-                             db='imdb_add',
-                             charset='utf8mb4',
-                             cursorclass=pymysql.cursors.DictCursor)
-
 
     if args.get_people_info:
-        people = get_people_data(bom_df[1000:2000],client)
-        add_to_people_db(people,client)
+        people = get_people_data(bom_df[1000:2000],CLIENT)
+        add_to_people_db(people,CLIENT)
 
 
     #patching the gender data...
     for rank,m in tqdm(bom_df[1000:2000].iterrows()):
         print('---- working on movie: {}'.format(m['title']))
-        count = get_movie_gender_counts(rank,client)
+        count = get_movie_gender_counts(rank,CLIENT)
         sql = "update `movies` set `counts`='{c}' where"\
             "`mrank`={r}".format(c=json.dumps(count),r=rank)
 
-        with client.cursor() as cursor:
-            cursor.execute(sql)
-        client.commit()
+        with CLIENT.cursor() as cursor:
+            CLIENT.execute(sql)
+        CLIENT.commit()
 
 
-    client.close()
+    CLIENT.close()
 
 
 if __name__ == '__main__':

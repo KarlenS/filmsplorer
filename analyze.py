@@ -13,19 +13,12 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
 
+from _dbclient import CLIENT
 
 __author__ = "Karlen Shahinyan"
 __license__ = "GPL"
 __version__ = "0.0.1"
 __status__ = "Dev"
-
-
-CLIENT = pymysql.connect(host='localhost',
-                         user='root',
-                         password='temppass',
-                         db='imdb_add',
-                         charset='utf8mb4',
-                         cursorclass=pymysql.cursors.DictCursor)
 
 
 def corner_plot(ystart=1980,yend=2019):
