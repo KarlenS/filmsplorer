@@ -1,15 +1,29 @@
-import imdb
+import os.path
+import time
 import matplotlib.pyplot as plt
 import numpy as np
 
 import argparse
 from tqdm import tqdm
 
-def get_IMDb_ratings(ia,name):
+import imdb
+
+#import plotly
+#import plotly.graph_objs as go
+
+BASE = '/Users/karlen/Fun/filmsplorer/web/app/'
+
+def get_IMDb_ratings(ia,name,style='bar'):
 
     s = ia.search_movie(name)
 
-    g = s[0]
+    try:
+        g = s[0]
+    except IndexError:
+        return None
+
+
+
     if g['kind'] == 'tv series':
         ia.update(g,info=['episodes','main'])
     else:
@@ -19,9 +33,20 @@ def get_IMDb_ratings(ia,name):
                 ia.update(g,info=['episodes','main'])
                 break
         else:
-            raise ValueError('Did not find a TV Show with a name: {}'.format(name))
+            return None
+            #raise ValueError('Did not find a TV Show with a name: {}'.format(name))
 
-    print('Found a TV Show: {n} {y}'.format(n=g['title'],y=g['year']))
+    title = '{t} ({y})'.format(t=g['title'],y=g['series years'])
+    fname = 'static/images/{t}_{s}.png'.format(t=title.replace(' ','_'),s=style)
+
+    checkname = checkname + fname
+
+    if os.path.exists(checkname):
+
+        if (time.time() - os.path.getctime(checkname) < 3600):
+            return fname
+
+    #print('Found a TV Show: {n} {y}'.format(n=g['title'],y=g['year']))
 
     nseasons = len(g['episodes'].keys())
 
@@ -36,7 +61,7 @@ def get_IMDb_ratings(ia,name):
         try:
             season = g['episodes'][s]
         except KeyError:
-            print('Season fail...{}'.format(s))
+            #print('Season fail...{}'.format(s))
             nseasons = nseasons - 1
             continue
 
@@ -47,7 +72,7 @@ def get_IMDb_ratings(ia,name):
             try:
                 vv = epi['arithmetic mean']
             except KeyError:
-                print('Skipping Episode S{s}E{e}'.format(s=s,e=enum+1))
+                #print('Skipping Episode S{s}E{e}'.format(s=s,e=enum+1))
                 continue
             enum +=1
             etot +=1
@@ -58,21 +83,23 @@ def get_IMDb_ratings(ia,name):
         slims.append((0,enum))
 
 
-    return [vals,elocs,slims,elabs,nseasons,g['title']]
+    return [vals,elocs,slims,elabs,nseasons,title]
 
 
 def format_plot(vals_min,slims,nseasons,title):
 
     fig,ax = plt.subplots(1,figsize=(15,6))
 
+    ax.yaxis.grid()
+
     ylow = 0 if vals_min <= 5 else 5
 
-    slabs = ['S{}'.format(i+1) for i in range(nseasons)]
+    slabs = ['{}'.format(i+1) for i in range(nseasons)]
 
     t = 0
     newlocs = []
     for l in slims:
-        newlocs.append(t+l[1]/2.)
+        newlocs.append(t+l[1]/2. + 0.5)
         t+= l[1]
 
     ax.set_ylim(ylow,10)
@@ -81,18 +108,30 @@ def format_plot(vals_min,slims,nseasons,title):
     labs = ax.set_xticklabels(slabs,fontdict={'fontsize':20})
     tmp = ax.set_yticklabels(ax.get_yticks(),fontdict={'fontsize':20})
     ax.set_ylabel('Mean IMDb Ratings',fontdict={'fontsize':20})
+    ax.set_xlabel('Season',fontdict={'fontsize':20})
     ax.set_title(title,fontdict={'fontsize':24},y=1.03)
 
     return ax,ylow
 
 
-def plot_ratings(data,style='bar',save=False):
+def plot_ratings(data,style='bar',save=True):
 
-    vals,elocs,slims,elabs,nseasons,title = data
+    if isinstance(data, str):
+        fname = data
+        print(fname)
+        return fname
+
+    else:
+        try:
+            vals,elocs,slims,elabs,nseasons,title = data
+        except:
+            fname = 'static/wompwomp2.gif'
+            print(fname)
+            return fname
+
 
     ax,ylow = format_plot(min(vals),slims,nseasons,title)
 
-    lim1 = 0
     lim2 = 0
 
     #plotting ratings split by season
@@ -113,34 +152,66 @@ def plot_ratings(data,style='bar',save=False):
 
     elabfsize = 12 if style == 'bar' else 0
 
+    xoff = 0.4 if len(elocs) > 30 else 0.1
+
     if len(elocs) < 100:
         for x,y,l in zip(elocs,vals,elabs):
 
             ax.annotate('E{l}'.format(l=l), xy=(x,y),\
-                        xytext=(x-0.4,ylow+0.65),color='white',\
+                        xytext=(x-xoff,ylow+0.65),color='white',\
                         fontsize=elabfsize,rotation=90)
             ax.annotate('{y}'.format(y=y), xy=(x,y),\
-                        xytext=(x-0.4,y*1.03),rotation=90)
+                        xytext=(x-xoff,y*1.03),rotation=90)
 
 
-    fname = title.replace(' ','_')
+    fname = 'static/images/{t}_{s}.png'.format(t=title.replace(' ','_'),s=style)
 
-    if save:
-        plt.savefig('{}.png'.format(fname))
-        print('Saved figure in {}.png'.format(fname))
-    else:
-        plt.show()
+    plt.savefig('app/{}'.format(fname))
+    print(fname)
+    return fname
+
+
+def make_interactive_plot(data,style='bar',save=True):
+
+    try:
+        vals,elocs,slims,elabs,nseasons,title = data
+    except:
+        fname = "<div><img> id='plot' src='static/wompwomp2.gif'</img></div>"
+        return fname
+
+    lim2 = 0
+    data = []
+
+    for s in range(0,nseasons,1):
+
+        lims = slims[s]
+        lim1 = lim2
+        lim2 += lims[1]
+        x = elocs[lim1:lim2]
+        y = vals[lim1:lim2]
+        labs = elabs[lim1:lim2]
+
+        trace = go.Bar(x = x, y = y,\
+                       text = labs)
+
+        data.append(trace)
+
+
+    layout = go.Layout(title=title,)
+
+    divtxt = plotly.offline.plot({'data':data,'layout':layout},\
+                                 include_plotlyjs=False, output_type='div')
+
+    print(divtxt)
+
 
 def run(name,style='bar',save=True):
-
-    if not style in ['bar','line']:
-        raise ValueError('style argument needs to be "bar" or "line"')
 
     ia = imdb.IMDb()
 
     data = get_IMDb_ratings(ia,name)
 
-    plot_ratings(data,style=style,save=save)
+    resp = plot_ratings(data,style=style,save=save)
 
 def main():
 
@@ -152,9 +223,10 @@ def main():
 
     ia = imdb.IMDb()
 
-    data = get_IMDb_ratings(ia,args.name)
+    data = get_IMDb_ratings(ia,args.name,style=args.style)
 
-    plot_ratings(data,style=args.style,save=args.save)
+    fname = plot_ratings(data,style=args.style,save=args.save)
+    #make_interactive_plot(data,style=args.style,save=args.save)
 
 
 if __name__ == '__main__':
