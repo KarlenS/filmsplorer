@@ -16,12 +16,16 @@ from bom import bom
 
 __author__ = "Karlen Shahinyan"
 __license__ = "GPL"
-__version__ = "0.0.1"
+__version__ = "0.1.1"
 __status__ = "Dev"
 
 INFLATION_DATA = "bom/bom_tprice_inflation.dat"
 
 def get_inflation():
+    '''
+    Reads ticket inflation info from file and returns
+    dataframe with index set to year.
+    '''
     inf_df = pd.read_csv(INFLATION_DATA,delim_whitespace=True,\
                         names=['year','infl'])
     inf_df = inf_df.set_index('year')
@@ -31,36 +35,60 @@ class DBInfoFetcher(object):
     '''
     Class to interact with IMDb and TMDB databases.
 
-    (might structure operations in series to delay time
-    between queries and reduce timeout chance.)
+    TODO: might structure operations in series to delay time
+    between queries and reduce timeout chance. also could
+    probably inherit from imdb but for now... meh
+
+    Attributes:
+        ia (imdb.IMDb): An imdb object for interacting with the 
+        online imdb interface.
     '''
 
     def __init__(self):
+        '''
+        Class is instantiated with an imdb object
+        made available as an attribute.
+        '''
         self.ia = imdb.IMDb()
 
     def _get_IMDb_Movie_Info(self,imdb_obj):
 
         try:
             self.ia.update(imdb_obj, info=['main'])
-        #might want to catch timeouts here
         except imdb.IMDbError as e:
             print(e)
 
     def get_IMDb_Person_Info(self,imdb_obj):
+        '''
+        Uses imdb instance to update an imdb person object
+        with biography and filmography info
+        '''
 
         try:
             self.ia.update(imdb_obj, info=['biography','filmography'])
-        #might want to catch timeouts here
         except imdb.IMDbError as e:
             print(e)
 
 
     def get_IMDb_info(self,key,pom='m'):
+        '''
+        Given a key and choice of person or movie
+        searches the imdb database for the key and
+        returns relevant information for the best match.
+
+        Args:
+            key (str): key to search on imdb
+            pom (str): person or movie flag (accepts p' or 'm')
+
+        Returns:
+            iobj: IMDb movie or person object
+        '''
 
         if pom == 'p':
             try:
                 search = self.ia.search_person(key)
                 self.get_IMDb_Person_Info(search[0])
+                iobj = search[0]
             except imdb.IMDbError as e:
                 print(e)
 
@@ -91,22 +119,43 @@ class DBInfoFetcher(object):
                 except:
                     print('No match for: {}'.format(title))
                     return None
+        else:
+            raise ValueError('{} is invalid for argument pom'.format(pom))
 
         return iobj
 
 
-    def get_TMDB_Info(self,tid):
+    def _get_TMDB_Info(self,tid):
+        '''
+        Undeveloped.
+        '''
 
         movie = tmdb.Movies(tid)
         res = movie.info()
 
-    def search_TMDB(self, key):
+    def _search_TMDB(self, key):
+        '''
+        Undeveloped.
+        '''
         search = tmdb.Search(query=key)
         res = search.info()
 
         return search.results
 
 class BOMInfoFetcher(object):
+    '''
+    Quick and very imcomplete "API" for scraping
+    BoxOfficeMojo website for all-time domestic earnings movie chart.
+
+    The main method `get_BOM_all_time_dom_chart` will read chart from a
+    previously saved csv file if it exists or generate it from website
+    scraping if it doesn't.
+
+    Attributes:
+        bom_filename (str): path to saved csv file of chart
+        bom_infl_filename (str): path to ticket inflation data file
+
+    '''
 
     def __init__(self):
         self.bom_filename = 'bom/bom_all_time_chart.csv'
@@ -114,11 +163,11 @@ class BOMInfoFetcher(object):
 
     def _adj_gross(self,df):
         '''
-        Adjusting gross earnings to 2019
+        Adjusts gross earnings to 2019 (hardcoded by inflation file)
         '''
 
-        inf_df = inf_df = pd.read_csv(self.bom_infl_filename,\
-                                      delim_whitespace=True,names=['year','infl'])
+        inf_df = pd.read_csv(self.bom_infl_filename,\
+                                delim_whitespace=True,names=['year','infl'])
         df = df.merge(inf_df,on='year')
 
         df['adj_gross'] = df['gross']/df['infl']
@@ -132,6 +181,20 @@ class BOMInfoFetcher(object):
         return df[(df.year >= yearlower) & (df.adj_gross >= grosslower)]
 
     def get_BOM_all_time_dom_chart(self,grosslower=0,yearlower=0):
+        '''
+        Retreives all-time domestic earnings chart either from
+        BoxOfficeMojo.com or from a presaved csv file and returns
+        a pandas dataframe sorted by rank (based on earnings total)
+
+        Args:
+            grosslower (float): lower bound on movie earnings to include in
+            returned chart
+            yearlower (int): lower bound on movie year to include in chart
+
+        Returns:
+            atd_chart_df (pd.DataFrame): all-time domestic movie chart
+            sorted by earnings
+        '''
 
         try:
             atd_chart_df = pd.read_csv(self.bom_filename)

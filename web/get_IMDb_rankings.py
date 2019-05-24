@@ -39,7 +39,7 @@ def get_IMDb_ratings(ia,name,style='bar'):
     title = '{t} ({y})'.format(t=g['title'],y=g['series years'])
     fname = 'static/images/{t}_{s}.png'.format(t=title.replace(' ','_'),s=style)
 
-    checkname = checkname + fname
+    checkname = BASE + fname
 
     if os.path.exists(checkname):
 

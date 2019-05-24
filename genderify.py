@@ -1,6 +1,6 @@
 '''
-Initial play with guessing male/female for
-person objects on IMDb based on bio.
+Guessing male/female for person objects on IMDb
+based on bio, first name, and filmography (in that order).
 '''
 
 import pymysql.cursors
@@ -17,13 +17,22 @@ from const import FURL,MURL
 
 __author__ = "Karlen Shahinyan"
 __license__ = "GPL"
-__version__ = "0.0.1"
+__version__ = "0.1.1"
 __status__ = "Dev"
 
 FNAMES = np.array(pd.read_csv(FURL,comment='#',names=['name'],squeeze=True))
 MNAMES = np.array(pd.read_csv(MURL,comment='#',names=['name'],squeeze=True))
 
 def check_filmography(fg):
+    '''
+    Uses filmography as returned by the IMDb API to attempt gender
+    determination based on 'actor'/'actress' distinction.
+
+    Args:
+        fg (dict): dictionary of filmography from IMDb
+
+    Returns (str): character (F, M, or X) to indicate gender
+    '''
 
     if fg:
         for f in fg:
@@ -38,9 +47,20 @@ def check_filmography(fg):
         return 'X'
 
 def get_gender_score(bio):
+    '''
+    Uses a biography text to determine a gender score of the subject
+    based on the counts of gendered pronouns:
+    Female - more positive, Male - more negative
+
+    Args:
+        bio (str): biography text
+
+    Returns:
+        score (int): gender score based on gender pronoun counts
+    '''
 
     clean_ts = []
-    for w in bio[0].split():
+    for w in bio.split():
         if w.lower() in SW:
             continue
         elif w[-1] == ',':
@@ -54,8 +74,8 @@ def get_gender_score(bio):
 
 def lookup_name_gender(name):
     '''
-    Given a name, looks up the name in a collection of male and female
-    names and returns a code:
+    Given a first name, looks up the name in a collection
+    of male and female names and returns a code:
         1 - female
        -1 - male
         0 - both (probably should check if there is any overlap)
@@ -63,9 +83,13 @@ def lookup_name_gender(name):
 
     Using Copyright (C) 1991 Mark Kantrowitz (Additions by Bill Ross)
     corpus of male and female names.
-    '''
 
-    #this is dumb, improve and make sure we're doing this once per session
+    Args:
+        name (str): first name to look up gender
+
+    Returns:
+        code (int): an integer code to indicate gender
+    '''
 
     if name in MNAMES:
         if name in FNAMES:
@@ -76,20 +100,8 @@ def lookup_name_gender(name):
         return 1
     else:
         return float('NaN')
-    '''
-    if mnames.str.contains(name).any():
 
-        if fnames.str.contains(name).any():
-            return 0
-        else:
-            return -1
-    elif fnames.str.contains(name).any():
-        return 1
-    else:
-        return float('NaN')
-    '''
-
-def get_sw():
+def _get_sw():
 
     gws = ['he','him','his','she','her']
 
@@ -100,4 +112,4 @@ def get_sw():
 
     return sw
 
-SW = get_sw()
+SW = _get_sw()

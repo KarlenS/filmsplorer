@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup
 
 __author__ = "Karlen Shahinyan"
 __license__ = "GPL"
-__version__ = "0.0.1"
+__version__ = "0.1.1"
 __status__ = "Dev"
 
 

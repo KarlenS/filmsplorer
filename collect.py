@@ -18,7 +18,7 @@ from _dbclient import CLIENT
 
 __author__ = "Karlen Shahinyan"
 __license__ = "GPL"
-__version__ = "0.0.1"
+__version__ = "0.1.1"
 __status__ = "Dev"
 
 
@@ -31,17 +31,26 @@ def get_BOM_data(glow,ylow):
 
 def get_gender(name,bio,filmog):
     '''
+    Given a first name, bio and filmography info from IMDb
+    returns best guess at a person's gender as either M or F
+    or X if none of the methods can be applied successfully.
+
     Logic is a little complicated here, but to summarize,
     using 2 methods to figure out gender:
 
-    - if bio info is good use it
-    - then, try looking it up by first name
+    - if bio info is good use it (seems to be most accurate)
+    - then, try looking it up by first name (ton of overlap in M/F names)
     - if that doesn't work either, use filmography actor/actress key
-    - Then... if one of the methods is uninformative while the
-    other gives an answer:
-        M or F
-    - No method succeeds:
-        X
+    - No method succeeds: return X
+
+
+    Args:
+        name (str): First name of person
+        bio (str): Biography text from IMDb
+        filmog (dict): person's filmography from IMDb
+
+    Returns:
+        gender (str): A character (F,M,X) to indicate gender determination
     '''
 
     gender_score = genderify.get_gender_score(bio)
@@ -58,7 +67,6 @@ def get_gender(name,bio,filmog):
         elif gender_lookup == 1:
             return 'F'
         else:
-            #can try checking actor/actress
             a = genderify.check_filmography(filmog)
             if a == 'M' or a == 'F':
                 return a
@@ -67,13 +75,31 @@ def get_gender(name,bio,filmog):
                 return 'X'
 
 def prep_ids(peeps):
+    '''
+    Helper method to return a unique list of IMDb IDs
+    given a list of IMDb objects.
+
+    Args:
+        peeps (array_like): array/list of IMDb objects
+
+    Returns:
+        id_dict (dict): dict with a list of ids set to a keyword "ids"
+    '''
     ids = pd.unique([p.getID() for p in peeps if p.getID() != None])
     return {"ids" : ids.tolist()}
 
 def count_genders(ids,client,dbif):
     '''
-    For a given movie, use the gender flags to total the
-    number of people
+    For a given movie (but really a list of IMDb ids),
+    uses the gender flags to total the number of people per gender
+
+    Args:
+        ids (array_like): list of IMDb person IDs
+        client (pymysql.connections.Connection): pymysql client object
+        dbif (InfoFetcher.DBInfoFetcher): object for interacting with
+
+    Returns:
+        M,F,X (int,int,int): The number of male, female, undetermined people.
     '''
 
     M = 0
@@ -90,7 +116,7 @@ def count_genders(ids,client,dbif):
         qres = cursor.fetchall()
 
         if len(qres) == 0:
-            gender = get_single_gender(pid,dbif)
+            gender = get_single_gender(pid,dbif,client)
         else:
             gender = qres[0]['gender']
 
@@ -111,6 +137,14 @@ def get_movie_gender_counts(rank,client):
     '''
     Given the movie rank in bom chart, returns number of people
     for each category (cast,writers,etc) broken down by gender.
+
+    Args:
+        rank (int): BoxOfficeMojo (BOM) all-time domestic chart rank of movie
+        client (pymysql.connections.Connection): pymysql client object
+
+    Returns:
+        counts (dict): dictionary with different roles (cast,writers,etc.) as
+        keys and a list with number of people per gender as values.
     '''
 
     dbif = InfoFetcher.DBInfoFetcher()
@@ -146,19 +180,28 @@ def get_movie_gender_counts(rank,client):
             M = 0
             F = 0
 
-        #print(ids)
-
-        #print(len(ids),M+F)
         counts[field] = [M,F,X]
 
     return counts
-        #count_genders()
 
 def get_IMDb_data(rank,title,year,dbif,client):
 
     '''
-    Uses the IMDb API to fetch desired data fields
-    for a given movie.
+    Uses the IMDb API to fetch pre-specified data fields
+    for a given movie. IMDb IDs of Cast/writers/etc. separated by role
+    are stored for each movie in a local database.
+
+    Args:
+        rank (int): BoxOfficeMojo all-time domestic chart rank
+        title (str): movie title
+        year (int): Year of the movie in XXXX format
+        dbif (InfoFetcher.DBInfoFetcher): object for interacting with
+        IMDb database and BoxOfficeMojo chart info
+        client (pymysql.connections.Connection): pymysql client object
+
+    Returns:
+        people (list): a combined unique list of
+        IMDb IDs of people involved in a movie
     '''
 
     ##this is patchwork - should really handle this in InfoFetcher
@@ -231,22 +274,22 @@ def get_IMDb_data(rank,title,year,dbif,client):
         cursor.execute(sql)
     client.commit()
 
-    #something like this for getting uniques
-    #peeps = [p for p in x if p.getID() != None]
-    #pd.unique(peeps)
-
-
     people = np.concatenate([cast,directors,producers,writers,cgs,composers])
     return pd.unique([p for p in people if p.getID() != None])
-
-
 
 
 def get_people_data(df,client):
     '''
     Make a pass and collect gender info for everyone involved
-    in each movie... either keep a separate DF/DB or add people info
-    to movie DF.
+    in each movie adding gender info to a local database..
+
+    Args:
+        df (pd.DataFrame): contains a movie per row with info from BOM.
+        client (pymysql.connections.Connection): pymysql client object
+
+    Returns:
+        people (list): a combined unique list of
+        IMDb IDs of people involved in a movie
     '''
 
     dbif = InfoFetcher.DBInfoFetcher()
@@ -260,9 +303,16 @@ def get_people_data(df,client):
     return peeps
 
 
-def get_single_gender(pid,dbif):
+def get_single_gender(pid,dbif,client):
     '''
-    Given a person's imdb ID, try to determine and return gender
+    Uses person's IMDb ID to determine,
+    record in a local database, and return gender.
+
+    Args:
+        pid (str): IMDb person ID
+        dbif (InfoFetcher.DBInfoFetcher): object for interacting with
+        IMDb database and BoxOfficeMojo chart info.
+        client (pymysql.connections.Connection): pymysql client object
     '''
 
     person = dbif.ia.get_person(pid,info=['main','biography','filmography'])
@@ -279,18 +329,16 @@ def get_single_gender(pid,dbif):
         except:
             return 'X'
 
-    #print('looking up gender for {}.'.format(name))
-
     firstname = name.split(' ')[0]
 
     try:
-        bio = person['biography']
+        bio = person['biography'][0]
     except:
         try:
-            bio = person['biography']
+            bio = person['biography'][0]
         except:
             print('bio empty or something went wrong')
-            bio = ['']
+            bio = ''
 
     try:
         filmog = person['filmography']
@@ -298,13 +346,34 @@ def get_single_gender(pid,dbif):
         print('setting filmog to None for {}'.format(name))
         filmog = None
 
-    return get_gender(firstname,bio,filmog)
+    gender = get_gender(firstname,bio,filmog)
+
+    sql = 'INSERT INTO `people` (id,name,gender)'\
+            ' VALUES ("{pid}","{name}","{gender}")'.format(pid=pid,
+                                                    name=name,gender=gender)
+
+    with client.cursor() as cursor:
+        try:
+            cursor.execute(sql)
+        except:
+            print('failed at executing: '.format(sql))
+
+    try:
+        client.commit()
+    except:
+        print('failed at committing to mysql')
+
+    return gender
 
 
 def add_to_people_db(people,client):
     '''
-    Given a list of IMDb people object, populate DB with
-    desired information (for now: ID, Name, Gender)
+    Given a list of IMDb person objects, populates DB with
+    desired information (for now: ID, Name, Gender).
+
+    args:
+        people (array_like): list of IMDb person objects
+        client (pymysql.connections.Connection): pymysql client object
     '''
 
     dbif = InfoFetcher.DBInfoFetcher()
@@ -320,16 +389,16 @@ def add_to_people_db(people,client):
         pid = person.getID()
 
         try:
-            bio = person['biography']
+            bio = person['biography'][0]
         except:
             print('likely connection issue, sleeping a sec')
             sleep(1)
             dbif.get_IMDb_Person_Info(person)
             try:
-                bio = person['biography']
+                bio = person['biography'][0]
             except:
                 print('waiting didnt help.')
-                bio = ['']
+                bio = ''
 
         try:
             filmog = person['filmography']
@@ -363,19 +432,17 @@ def main():
 
 
     if args.get_people_info:
-        people = get_people_data(bom_df[1000:2000],CLIENT)
-        add_to_people_db(people,CLIENT)
-
+        people = get_people_data(bom_df[4000:5000],CLIENT)
 
     #patching the gender data...
-    for rank,m in tqdm(bom_df[1000:2000].iterrows()):
+    for rank,m in tqdm(bom_df[4000:5000].iterrows()):
         print('---- working on movie: {}'.format(m['title']))
         count = get_movie_gender_counts(rank,CLIENT)
         sql = "update `movies` set `counts`='{c}' where"\
             "`mrank`={r}".format(c=json.dumps(count),r=rank)
 
         with CLIENT.cursor() as cursor:
-            CLIENT.execute(sql)
+            cursor.execute(sql)
         CLIENT.commit()
 
 
