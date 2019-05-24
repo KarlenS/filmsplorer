@@ -76,10 +76,10 @@ def lookup_name_gender(name):
     '''
     Given a first name, looks up the name in a collection
     of male and female names and returns a code:
-        1 - female
-       -1 - male
-        0 - both (probably should check if there is any overlap)
-      nan - if can't find name in either collection
+    1 - female
+    -1 - male
+    0 - both (probably should check if there is any overlap)
+    nan - if can't find name in either collection
 
     Using Copyright (C) 1991 Mark Kantrowitz (Additions by Bill Ross)
     corpus of male and female names.
