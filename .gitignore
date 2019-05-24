@@ -108,3 +108,4 @@ _dbclient.py
 Untitled.ipynb
 _const.py
 web/app/static/images/
+.DS_Store
