@@ -35,13 +35,12 @@ class DBInfoFetcher(object):
     '''
     Class to interact with IMDb and TMDB databases.
 
-    TODO: might structure operations in series to delay time
+    todo: might structure operations in series to delay time
     between queries and reduce timeout chance. also could
     probably inherit from imdb but for now... meh
 
     Attributes:
-        ia (imdb.IMDb): An imdb object for interacting with the 
-        online imdb interface.
+        ia (imdb.IMDb): An imdb object for interacting with the online imdb interface.
     '''
 
     def __init__(self):
@@ -187,13 +186,11 @@ class BOMInfoFetcher(object):
         a pandas dataframe sorted by rank (based on earnings total)
 
         Args:
-            grosslower (float): lower bound on movie earnings to include in
-            returned chart
+            grosslower (float): lower bound on movie earnings to include in returned chart
             yearlower (int): lower bound on movie year to include in chart
 
         Returns:
-            atd_chart_df (pd.DataFrame): all-time domestic movie chart
-            sorted by earnings
+            pandas.DataFrame: all-time domestic movie chart sorted by earnings
         '''
 
         try:

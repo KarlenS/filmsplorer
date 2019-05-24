@@ -22,7 +22,7 @@ __version__ = "0.0.1"
 __status__ = "Dev"
 
 
-def corner_plot(ystart=1980,yend=2019,glim=[0,10000000000]):
+def corner_plot(ystart=1980,yend=2019,glim=[0,1E10]):
 
     df = get_gender_data_from_db(ylim=[ystart,yend],glim=glim)
 
@@ -51,7 +51,7 @@ def corner_plot(ystart=1980,yend=2019,glim=[0,10000000000]):
     figure = corner.corner(cdata,labels=relfields)
 
 
-def corr_plot(f1,f2,f3val=None,ylim=[1980,2019],glim=[0,10000000000]):
+def corr_plot(f1,f2,f3val=None,ylim=[1980,2019],glim=[0,1E10]):
 
     df = get_gender_data_from_db(ylim=ylim,glim=glim)
 
@@ -100,7 +100,7 @@ def corr_plot(f1,f2,f3val=None,ylim=[1980,2019],glim=[0,10000000000]):
     ax.legend()
 
 
-def plot_yearly_data(ystart,yend,field='total',glim=[0,10000000000]):
+def plot_yearly_data(ystart,yend,field='total',glim=[0,1E10]):
 
     fig = plt.figure(figsize=(10,6))
     gs = GridSpec(3, 3)
@@ -159,7 +159,7 @@ def get_count_totals(df):
 
     return count_totals
 
-def get_gender_data_from_db(rlim=[0,5200],ylim=[1980,2019],glim=[0,10000000000]):
+def get_gender_data_from_db(rlim=[0,5200],ylim=[1980,2019],glim=[0,1E10]):
 
     sql ="SELECT `mrank`,`id`,`title`,`year`,`studio`,`gross`,`counts` "\
             "FROM `movies` WHERE (`mrank` BETWEEN '{r1}' AND '{r2}') AND "\

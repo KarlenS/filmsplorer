@@ -50,7 +50,7 @@ def get_gender(name,bio,filmog):
         filmog (dict): person's filmography from IMDb
 
     Returns:
-        gender (str): A character (F,M,X) to indicate gender determination
+        str: A character (F,M,X) to indicate gender determination
     '''
 
     gender_score = genderify.get_gender_score(bio)
@@ -83,7 +83,7 @@ def prep_ids(peeps):
         peeps (array_like): array/list of IMDb objects
 
     Returns:
-        id_dict (dict): dict with a list of ids set to a keyword "ids"
+        dict: dict with a list of ids set to a keyword "ids"
     '''
     ids = pd.unique([p.getID() for p in peeps if p.getID() != None])
     return {"ids" : ids.tolist()}
@@ -99,7 +99,7 @@ def count_genders(ids,client,dbif):
         dbif (InfoFetcher.DBInfoFetcher): object for interacting with
 
     Returns:
-        M,F,X (int,int,int): The number of male, female, undetermined people.
+        int,int,int: The number of male, female, undetermined people.
     '''
 
     M = 0
@@ -143,8 +143,7 @@ def get_movie_gender_counts(rank,client):
         client (pymysql.connections.Connection): pymysql client object
 
     Returns:
-        counts (dict): dictionary with different roles (cast,writers,etc.) as
-        keys and a list with number of people per gender as values.
+        dict: dictionary with different roles (cast,writers,etc.) as keys and a list with number of people per gender as values.
     '''
 
     dbif = InfoFetcher.DBInfoFetcher()
@@ -200,8 +199,7 @@ def get_IMDb_data(rank,title,year,dbif,client):
         client (pymysql.connections.Connection): pymysql client object
 
     Returns:
-        people (list): a combined unique list of
-        IMDb IDs of people involved in a movie
+        list: a combined unique list of IMDb IDs of people involved in a movie
     '''
 
     ##this is patchwork - should really handle this in InfoFetcher
@@ -288,8 +286,7 @@ def get_people_data(df,client):
         client (pymysql.connections.Connection): pymysql client object
 
     Returns:
-        people (list): a combined unique list of
-        IMDb IDs of people involved in a movie
+        list: a combined unique list of IMDb IDs of people involved in a movie
     '''
 
     dbif = InfoFetcher.DBInfoFetcher()

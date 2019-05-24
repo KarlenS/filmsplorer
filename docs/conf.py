@@ -178,11 +178,11 @@ intersphinx_mapping = {'https://docs.python.org/': None}
 ## If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
-#html_context = {
-#    "display_github": True, # Integrate GitHub
-#    "github_user": "KarlenS", # Username
-#    "github_repo": "filmsplorer", # Repo name
-#    "github_version": "blob/master/", # Version
-#    "conf_py_path": "docs/source/", # Path in the checkout to the docs root
-#}
+html_context = {
+    "display_github": True, # Integrate GitHub
+    "github_user": "KarlenS", # Username
+    "github_repo": "filmsplorer", # Repo name
+    "github_version": "master/", # Version
+    "conf_py_path": "docs/", # Path in the checkout to the docs root
+}
 #
