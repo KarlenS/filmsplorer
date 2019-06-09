@@ -1,1 +1,12 @@
 sphinxcontrib-napoleon
+pandas
+numpy
+pymysql
+imdbpy
+tmdbsimple
+json
+corner
+matplotlib
+argparse
+time
+nltk
