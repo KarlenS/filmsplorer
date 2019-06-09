@@ -104,7 +104,7 @@ venv.bak/
 .mypy_cache/
 
 # custom
-_dbclient.py
+#_dbclient.py
 Untitled.ipynb
 _const.py
 web/app/static/images/
