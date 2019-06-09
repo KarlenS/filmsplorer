@@ -8,3 +8,4 @@ corner
 matplotlib
 argparse
 nltk
+tqdm
