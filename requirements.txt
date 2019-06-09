@@ -4,7 +4,6 @@ numpy
 pymysql
 imdbpy
 tmdbsimple
-json
 corner
 matplotlib
 argparse
