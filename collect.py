@@ -210,7 +210,7 @@ def get_IMDb_data(rank,title,year,dbif,client):
 
     if movie == None:
         failf = open('faillist.txt','a+')
-        failf.write('{r} | {t} | {y}'.format(r=rank,t=title,y=year))
+        failf.write('{t} ({y})\n'.format(r=rank,t=title,y=year))
         failf.close()
         print('skipping {}'.format(title))
         return []
@@ -224,9 +224,10 @@ def get_IMDb_data(rank,title,year,dbif,client):
         directors = movie['directors']
         writers = movie['writers']
     except KeyError:
-        failf = open('faillist.txt','a+')
-        failf.write('{r} | {t} | {y}'.format(r=rank,t=title,y=year))
-        failf.close()
+        #failf = open('faillist.txt','a+')
+        print('skipping {} - missing peeps'.format(title))
+        #failf.write('{r} | {t} | {y}\n'.format(r=rank,t=title,y=year))
+        #failf.close()
         return []
 
     cids = prep_ids(cast)
@@ -414,33 +415,67 @@ def add_to_people_db(people,client):
         client.commit()
 
 
+def patch_missed_movies(rank_upper,client):
+    '''
+    Attempts to redo queries for movies missed during first pass,
+    likely due to connection issues.
+
+    NOTE: lots of failures from year mismatch between IMDb and BOM...
+    '''
+
+    dbif = InfoFetcher.DBInfoFetcher()
+
+    sql = "SELECT * FROM `movies` WHERE"\
+          "`counts` LIKE '{}' AND `mrank` < %s;" %rank_upper
+
+    with client.cursor() as cursor:
+        cursor.execute(sql)
+    client.commit()
+
+    qres = cursor.fetchall()
+    for md in qres:
+        rank = md['mrank']
+        title = '{title}'.format(title=md['title'])
+        print(rank,title)
+        _ = get_IMDb_data(rank,title,md['year'],dbif,client)
+
+        count = get_movie_gender_counts(rank,CLIENT)
+        sql = "update `movies` set `counts`='{c}' where"\
+            "`mrank`={r}".format(c=json.dumps(count),r=rank)
+
+        with client.cursor() as cursor:
+            cursor.execute(sql)
+        client.commit()
+
 def main():
 
     parser = argparse.ArgumentParser('This is a tool for gathering' \
                                      'BOM and IMDb data.')
     parser.add_argument('-ylow',default=1980,help='Earliest year.')
-    parser.add_argument('-glow',default=1000000,help='Lowest gross earning.')
+    parser.add_argument('-glow',default=10000,help='Lowest gross earning.')
     parser.add_argument('--get_people_info',action='store_true',\
                         help='When true will populate'\
                         'database tables with people info.')
     args = parser.parse_args()
 
-    bom_df = get_BOM_data(args.glow,args.ylow)
+
+    patch_missed_movies(5200,CLIENT)
+    #bom_df = get_BOM_data(args.glow,args.ylow)
 
 
-    if args.get_people_info:
-        people = get_people_data(bom_df[4000:5000],CLIENT)
+    #if args.get_people_info:
+    #    people = get_people_data(bom_df[5000:6000],CLIENT)
 
-    #patching the gender data...
-    for rank,m in tqdm(bom_df[4000:5000].iterrows()):
-        print('---- working on movie: {}'.format(m['title']))
-        count = get_movie_gender_counts(rank,CLIENT)
-        sql = "update `movies` set `counts`='{c}' where"\
-            "`mrank`={r}".format(c=json.dumps(count),r=rank)
+    ##patching the gender data...
+    #for rank,m in tqdm(bom_df[5000:6000].iterrows()):
+    #    print('---- working on movie: {}'.format(m['title']))
+    #    count = get_movie_gender_counts(rank,CLIENT)
+    #    sql = "update `movies` set `counts`='{c}' where"\
+    #        "`mrank`={r}".format(c=json.dumps(count),r=rank)
 
-        with CLIENT.cursor() as cursor:
-            cursor.execute(sql)
-        CLIENT.commit()
+    #    with CLIENT.cursor() as cursor:
+    #        cursor.execute(sql)
+    #    CLIENT.commit()
 
 
     CLIENT.close()

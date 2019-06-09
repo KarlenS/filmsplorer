@@ -34,17 +34,19 @@ def corner_plot(ystart=1980,yend=2019,glim=[0,1E10]):
         cdict = json.loads(m['counts'])
 
         temp = []
-        for field in relfields:
-            try:
+        try:
+            for field in relfields:
                 M,F,X = cdict[field]
-            except KeyError:
-                M,F,X = [0,0,1] #bad, need better handling
+                #M,F,X = [0,0,1] #bad, need better handling
 
-            if M+F+X == 0:
-                print('poop')
-                temp.append(0)
-            else:
-                temp.append(F/float(M+F+X))
+                if M+F+X == 0:
+                    #temp.append(0)
+                    raise KeyError
+                else:
+                    temp.append(F/float(M+F+X))
+        except KeyError:
+            print('Skipping {}'.format(m['title']))
+            continue
 
         cdata.append(temp)
 
@@ -99,7 +101,6 @@ def corr_plot(f1,f2,f3val=None,ylim=[1980,2019],glim=[0,1E10]):
 
     ax.legend()
 
-
 def plot_yearly_data(ystart,yend,field='total',glim=[0,1E10]):
 
     fig = plt.figure(figsize=(10,6))
@@ -121,7 +122,7 @@ def plot_yearly_data(ystart,yend,field='total',glim=[0,1E10]):
     for year in years:
         df = get_gender_data_from_db(ylim=[year,year],
                                      glim=glim)
-        counts = get_count_totals(df)
+        counts = get_yearly_count_totals(df)
         nmov = float(len(df.index))
 
         ax.bar([year], counts[field][0], width,color='C0')
@@ -139,8 +140,7 @@ def plot_yearly_data(ystart,yend,field='total',glim=[0,1E10]):
     axr.set_ylabel('Fraction Female',fontsize=16)
     axr.set_xlabel('Year',fontsize=16)
 
-
-def get_count_totals(df):
+def get_yearly_count_totals(df):
 
     fields = ['cast','directors','producers',\
               'writers','composers','cgs','total']
@@ -159,9 +159,43 @@ def get_count_totals(df):
 
     return count_totals
 
+def engineer_features_lol(rlim=[0,5200],ylim=[1980,2019],glim=[0,1E10]):
+
+    mdf = get_gender_data_from_db(rlim,ylim,glim)
+
+    relfields = ['directors','producers','writers','cast']
+
+    ff_fields = ['{}_ff'.format(f) for f in relfields]
+
+    for ff_field in ff_fields:
+        mdf[ff_field] = np.nan
+
+    cdata = []
+
+    for rank,m in mdf.iterrows():
+        cdict = json.loads(m['counts'])
+
+        try:
+            for field,ff_field in zip(relfields,ff_fields):
+
+                M,F,X = cdict[field]
+
+                if M+F+X == 0:
+                    raise KeyError
+                else:
+                    mdf.at[rank,ff_field] = F/float(M+F+X)
+        except KeyError:
+            print('Skipping {}'.format(m['title']))
+            continue
+
+        #cdata.append(temp)
+
+
+    return mdf
+
 def get_gender_data_from_db(rlim=[0,5200],ylim=[1980,2019],glim=[0,1E10]):
 
-    sql ="SELECT `mrank`,`id`,`title`,`year`,`studio`,`gross`,`counts` "\
+    sql ="SELECT `mrank`,`id`,`title`,`year`,`studio`,`gross`,`counts`,`genres` "\
             "FROM `movies` WHERE (`mrank` BETWEEN '{r1}' AND '{r2}') AND "\
             "(`gross` BETWEEN '{g1}' AND '{g2}') AND "\
             "(`year` BETWEEN '{y1}' AND '{y2}')".format(r1=rlim[0],r2=rlim[1],\
