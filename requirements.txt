@@ -7,5 +7,4 @@ tmdbsimple
 corner
 matplotlib
 argparse
-time
 nltk
